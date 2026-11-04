@@ -1,5 +1,6 @@
 // Práctica Unificada: Iluminación Orbital y Animación de Agua
 // Estudiante: Iván Daniel Cortés Alvarado
+// commit de prueba
 
 #include <iostream>
 #include <string>
@@ -60,7 +61,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Proyecto - Escena Principal y Agua Animada. Ivan Daniel", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Proyecto final. Computacion grafica", nullptr, nullptr);
 
     if (nullptr == window)
     {
@@ -95,6 +96,7 @@ int main()
 
     // Modelos
     Model escena_principal((char*)"Models/escenaPrincipal.obj");
+    // ANIMACIONES 
     Model agua((char*)"Models/agua.obj"); // Modelo de agua por separado
     Model sol((char*)"Models/modeloSol.obj");
     Model luna((char*)"Models/modeloLuna.obj");
