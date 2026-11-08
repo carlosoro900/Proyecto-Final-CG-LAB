@@ -1,6 +1,7 @@
 // Práctica Unificada: Iluminación Orbital y Animación de Agua
 // Estudiante: Iván Daniel Cortés Alvarado
 // commit de prueba
+//agua modificada
 
 #include <iostream>
 #include <string>
@@ -25,6 +26,7 @@
 #include "Shader.h"
 #include "Camera.h"
 #include "Model.h"
+#include "agua.h"		
 
 // Dimensiones de ventana
 const GLuint WIDTH = 800, HEIGHT = 600;
@@ -51,6 +53,9 @@ glm::vec3 skyColor(0.1f, 0.1f, 0.12f); // Declaración única de skyColor
 // DeltaTime
 GLfloat deltaTime = 0.0f;
 GLfloat lastFrame = 0.0f;
+
+// AGUA Objeto que controla el agua animada
+AguaAnimada aguaAnimada;
 
 int main()
 {
@@ -93,13 +98,26 @@ int main()
     // Shaders
     Shader lightingShader("Shader/lighting.vs", "Shader/lighting.frag");
     Shader lampShader("Shader/lamp.vs", "Shader/lamp.frag");
+    AguaAnimada::crearArchivosShader("Shader");						
+    Shader aguaShader("Shader/agua.vs", "Shader/agua.fs");		
 
     // Modelos
     Model escena_principal((char*)"Models/escenaPrincipal.obj");
     // ANIMACIONES 
-    Model agua((char*)"Models/agua.obj"); // Modelo de agua por separado
+    Model agua((char*)"Models/agua.obj"); 
     Model sol((char*)"Models/modeloSol.obj");
     Model luna((char*)"Models/modeloLuna.obj");
+
+    // AGUA Parámetros de las olas. 
+    //   amplitud   = qué tan altas son las olas
+    //   frecuencia = qué tan juntas están (más chico = olas más anchas)
+    //   velocidad  = qué tan rápido se mueven
+    aguaAnimada.amplitud = 0.08f;
+    aguaAnimada.frecuencia = 1.0f;
+    aguaAnimada.velocidad = 1.8f;
+    aguaAnimada.transparencia = 0.85f;
+    aguaAnimada.texturaDelModelo = true;	
+    // aguaAnimada.colorAgua = glm::vec3(0.05f, 0.35f, 0.55f);
 
     lightingShader.Use();
     glUniform1i(glGetUniformLocation(lightingShader.Program, "material.diffuse"), 0);
@@ -124,7 +142,7 @@ int main()
         glm::mat4 view = camera.GetViewMatrix();
 
         // ====================================================================
-        // DIBUJO DE ESCENA PRINCIPAL Y AGUA
+        // DIBUJO DE ESCENA PRINCIPAL
         // ====================================================================
         lightingShader.Use();
 
@@ -172,19 +190,7 @@ int main()
         glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelEscena));
         escena_principal.Draw(lightingShader);
 
-        // --------------------------------------------------------------------
-        // A2. DIBUJAR AGUA (ANIMADA)
-        // --------------------------------------------------------------------
-        glUniform1i(glGetUniformLocation(lightingShader.Program, "isWater"), 1);
-        glUniform1f(glGetUniformLocation(lightingShader.Program, "uTime"), (float)glfwGetTime());
-        glUniform1f(glGetUniformLocation(lightingShader.Program, "waveAmplitude"), 0.03f);
-        glUniform1f(glGetUniformLocation(lightingShader.Program, "waveFrequency"), 1.5f);
-        glUniform1f(glGetUniformLocation(lightingShader.Program, "waveSpeed"), 1.8f);
-        glUniform2f(glGetUniformLocation(lightingShader.Program, "waterSpeed"), 0.02f, 0.01f);
-
-        glm::mat4 modelAgua(1.0f);
-        glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelAgua));
-        agua.Draw(lightingShader);
+        // (El agua ya NO se dibuja aquí: ahora se dibuja al final, con su propio shader)
 
         // ====================================================================
         // DIBUJO DE LÁMPARAS (SOL Y LUNA)
@@ -210,6 +216,18 @@ int main()
         glUniformMatrix4fv(glGetUniformLocation(lampShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modeloLuna));
         glUniform3f(glGetUniformLocation(lampShader.Program, "lightColor"), 0.7f, 0.8f, 1.0f);
         luna.Draw(lampShader);
+
+        // ====================================================================
+        // [AGUA] AGUA ANIMADA (se dibuja al final porque es transparente)
+        // ====================================================================
+        // La luz del agua sigue al sol: de día brilla, de noche se oscurece
+        aguaAnimada.luzDir = dirSol;
+        float intensidadSol = glm::clamp(lightPos1.y / 35.0f, 0.15f, 1.0f);
+        aguaAnimada.luzColor = glm::vec3(1.0f, 0.97f, 0.9f) * intensidadSol;
+
+        glm::mat4 modelAgua(1.0f);	// si necesitas mover o escalar el agua, hazlo aquí
+        aguaAnimada.drawModelo(aguaShader, agua, modelAgua, view, projection,
+            camera.GetPosition(), (float)glfwGetTime());
 
         glfwSwapBuffers(window);
     }
