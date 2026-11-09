@@ -26,24 +26,53 @@
 #include "Shader.h"
 #include "Camera.h"
 #include "Model.h"
-#include "agua.h"		
+#include "agua.h"	
+//#include <iostream>
+#include <fstream>
+
+
 
 // Dimensiones de ventana
 const GLuint WIDTH = 800, HEIGHT = 600;
-int SCREEN_WIDTH, SCREEN_HEIGHT;
+int SCREEN_WIDTH = WIDTH, SCREEN_HEIGHT = HEIGHT;
 
 // Prototipos
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode);
 void MouseCallback(GLFWwindow* window, double xPos, double yPos);
-void DoMovement();
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void DoMovement(GLFWwindow* window);
 void Animation();
 
 // Cámara
-Camera camera(glm::vec3(0.0f, 2.0f, 10.0f));
+//Camera camera(glm::vec3(0.0f, 2.0f, 10.0f));
 bool keys[1024];
 GLfloat lastX = WIDTH / 2.0f;
 GLfloat lastY = HEIGHT / 2.0f;
 bool firstMouse = true;
+
+//Camera
+Camera camera(glm::vec3(0.0f, 10.0f, 3.0f));
+
+float cameraDistance = 12.0f;
+float cameraHeight = 5.0f;
+float cameraYaw = 0.0f;
+float cameraPitch = 1.0f;
+
+float mouseSensitivity = 0.4f;
+
+float MovementSpeed = 0.2f;
+
+//Timing
+const int FPS = 60;
+const int LOOP_TIME = 1000 / FPS; // = 16 milisec // 1000 millisec == 1 sec
+//double	deltaTime = 0.0f,
+//lastFrame = 0.0f;
+
+//For Keyboard
+float	movX = 0.0f,
+movY = 0.0f,
+movZ = -5.0f,
+rotX = 0.0f;
 
 // Atributos de Luz y Cielo
 glm::vec3 lightPos1(0.0f, 10.0f, 10.0f);
@@ -57,29 +86,94 @@ GLfloat lastFrame = 0.0f;
 // AGUA Objeto que controla el agua animada
 AguaAnimada aguaAnimada;
 
+
+//Keyframes (Manipulación y dibujo)
+float	posX = 0.0f,
+posY = 1.0f,
+posZ = 50.0f,
+rotRodIzq = 0.0f,
+giroMonito = 180.0f,
+rotBrazoDer = 0.0f,
+rotBrazoIzq = 0.0f,
+rotPiernaDer = 0.0f,
+rotPiernaIzq = 0.0f,
+rotCabezaSi = 0.0f,
+rotCabezaNo = 0.0f;
+
+float tiempoCaminata = 0.0f;
+//float velocidadCaminata = 0.02f;
+float anguloMaximo = 80.0f;
+float anguloCaminata = 0.0f;
+float velocidadCaminata = 160.0f;
+float direccionCaminata = 1.0f;
+
+float	incX = 0.0f,
+incY = 0.0f,
+incZ = 0.0f,
+rotRodIzqInc = 0.0f,
+giroMonitoInc = 0.0f,
+rotBrazoDerInc = 0.0f,
+rotBrazoIzqInc = 0.0f,
+rotPiernaDerInc = 0.0f,
+rotPiernaIzqInc = 0.0f,
+rotCabezaSiInc = 0.0f,
+rotCabezaNoInc = 0.0f;
+
+bool perspect = false;
+
 int main()
 {
     glfwInit();
+
+    // Obtener resolución del monitor
+    const GLFWvidmode* modo = glfwGetVideoMode(glfwGetPrimaryMonitor());
+
+    SCREEN_WIDTH = modo->width;
+    SCREEN_HEIGHT = modo->height;
+
+    // Configuración de OpenGL
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-    GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Proyecto final. Computacion grafica", nullptr, nullptr);
+    // Crear ventana con resolución del monitor
+    GLFWwindow* window = glfwCreateWindow(
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT,
+        "Proyecto final. Computacion grafica",
+        glfwGetPrimaryMonitor(),
+        nullptr
+    );
 
-    if (nullptr == window)
+    if (window == nullptr)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return EXIT_FAILURE;
     }
 
+    glfwSetWindowPos(window, 0, 30);
+    glfwMakeContextCurrent(window);
+    //glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    //glfwSetKeyCallback(window, DoMovement);
+
+    glfwMakeContextCurrent(window);
+
+    // Capturar el mouse
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    std::cout << "Ancho: " << SCREEN_WIDTH << std::endl;
+    std::cout << "Alto: " << SCREEN_HEIGHT << std::endl;
+
     glfwMakeContextCurrent(window);
     glfwGetFramebufferSize(window, &SCREEN_WIDTH, &SCREEN_HEIGHT);
 
     glfwSetKeyCallback(window, KeyCallback);
     glfwSetCursorPosCallback(window, MouseCallback);
+    
 
     glewExperimental = GL_TRUE;
     if (GLEW_OK != glewInit())
@@ -108,6 +202,22 @@ int main()
     Model sol((char*)"Models/modeloSol.obj");
     Model luna((char*)"Models/modeloLuna.obj");
 
+    Model CabezaAquaman((char*)"ModelosCarlos/Aquaman/Cabeza.obj");
+    Model CuerpoAquaman((char*)"ModelosCarlos/Aquaman/Cuerpo.obj");
+    Model BrazoIzqAquaman((char*)"ModelosCarlos/Aquaman/BrazoIzq.obj");
+    Model BrazoDerAquaman((char*)"ModelosCarlos/Aquaman/BrazoDer.obj");
+    Model PiernaIzqAquaman((char*)"ModelosCarlos/Aquaman/PiernaIzq.obj");
+    Model PiernaDerAquaman((char*)"ModelosCarlos/Aquaman/PiernaDer.obj");
+    Model BotaIzqAquaman((char*)"ModelosCarlos/Aquaman/BotaIzq.obj");
+    Model BotaDerAquaman((char*)"ModelosCarlos/Aquaman/BotaDer.obj");
+    Model Traja((char*)"ModelosCarlos/traja1/trajinera1.obj");
+
+
+    // create transformations and Projection
+    glm::mat4 modelOp = glm::mat4(1.0f);		// initialize Matrix, Use this matrix for individual models
+    glm::mat4 viewOp = glm::mat4(1.0f);		//Use this matrix for ALL models
+    glm::mat4 projectionOp = glm::mat4(1.0f);	//This matrix is for Projection
+
     // AGUA Parámetros de las olas. 
     //   amplitud   = qué tan altas son las olas
     //   frecuencia = qué tan juntas están (más chico = olas más anchas)
@@ -132,7 +242,7 @@ int main()
         lastFrame = currentFrame;
 
         glfwPollEvents();
-        DoMovement();
+        DoMovement(window);
         Animation();
 
         // Limpiado de pantalla con el color dinámico del cielo
@@ -186,7 +296,16 @@ int main()
         glUniform1i(glGetUniformLocation(lightingShader.Program, "isWater"), 0);
         glUniform1i(glGetUniformLocation(lightingShader.Program, "transparency"), 1);
 
-        glm::mat4 modelEscena(1.0f);
+        //glm::mat4 modelEscena(1.0f);
+        glm::mat4 modelEscena = glm::translate(
+            glm::mat4(1.0f),
+            glm::vec3(0.0f, 0.0f, 0.0f)
+        );
+
+        modelEscena = glm::scale(
+            modelEscena,
+            glm::vec3(3.0f,3.0f,4.0f)
+        );
         glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelEscena));
         escena_principal.Draw(lightingShader);
 
@@ -225,12 +344,208 @@ int main()
         float intensidadSol = glm::clamp(lightPos1.y / 35.0f, 0.15f, 1.0f);
         aguaAnimada.luzColor = glm::vec3(1.0f, 0.97f, 0.9f) * intensidadSol;
 
-        glm::mat4 modelAgua(1.0f);	// si necesitas mover o escalar el agua, hazlo aquí
+        //glm::mat4 modelAgua(1.0f);	// si necesitas mover o escalar el agua, hazlo aquí
+        glm::mat4 modelAgua = glm::translate(
+            glm::mat4(1.0f),
+            glm::vec3(0.0f, 0.0f, 0.0f)
+        );
+        modelAgua = glm::scale(
+            modelAgua,
+            glm::vec3(3.0f,3.0f,4.0f)
+        );
         aguaAnimada.drawModelo(aguaShader, agua, modelAgua, view, projection,
             camera.GetPosition(), (float)glfwGetTime());
 
+        
+
+
+        //-----------------------------------------------------------------------------
+        //Aquaman
+        //-----------------------------------------------------------------------------
+        /*staticShader.use();
+        staticShader.setMat4("projection", projectionOp);
+        staticShader.setMat4("view", viewOp);*/
+
+        
+
+        // Matriz de referencia del cuerpo de Aquaman
+        glm::mat4 refCuerpoAquaman = glm::mat4(0.5f);
+
+        //refCuerpoAquaman = modelOp = glm::translate(glm::mat4(1.0f), glm::vec3(posX, posY, posZ));
+        //refCuerpoAquaman = modelOp = glm::rotate(modelOp, glm::radians(giroMonito), glm::vec3(0.0f, 1.0f, 0.0f));
+
+        
+
+        // Activar shader de iluminación
+        lightingShader.Use();
+
+        // CUERPO
+        // Posición inicial del personaje
+        modelOp = refCuerpoAquaman = glm::translate(
+            glm::mat4(1.0f),
+            glm::vec3(posX, posY, posZ)
+        );
+
+        modelOp = refCuerpoAquaman = glm::rotate(
+            refCuerpoAquaman,
+            glm::radians(giroMonito),
+            glm::vec3(0.0f, 1.0f, 0.0f)
+        );
+
+        // Escala de todo Aquaman
+        modelOp = refCuerpoAquaman = glm::scale(
+            refCuerpoAquaman,
+            glm::vec3(0.4f)
+        );
+
+
+        glUniformMatrix4fv(
+            glGetUniformLocation(lightingShader.Program, "model"),
+            1, GL_FALSE, glm::value_ptr(modelOp)
+        );
+
+        CuerpoAquaman.Draw(lightingShader);
+
+
+        // CABEZA
+        modelOp = glm::translate(
+            refCuerpoAquaman,
+            glm::vec3(0.0f, 1.5f, 0.0f)
+        );
+
+        glUniformMatrix4fv(
+            glGetUniformLocation(lightingShader.Program, "model"),
+            1, GL_FALSE, glm::value_ptr(modelOp)
+        );
+
+        CabezaAquaman.Draw(lightingShader);
+
+
+        // BRAZO DERECHO
+        modelOp = glm::translate(
+            refCuerpoAquaman,
+            glm::vec3(-0.75f, 1.5f, 0.0f)
+        );
+
+        modelOp = glm::rotate(modelOp, glm::radians(rotBrazoDer), glm::vec3(1.0f, 0.0f, 0.0f));
+
+        glUniformMatrix4fv(
+            glGetUniformLocation(lightingShader.Program, "model"),
+            1, GL_FALSE, glm::value_ptr(modelOp)
+        );
+
+        BrazoDerAquaman.Draw(lightingShader);
+
+
+        // BRAZO IZQUIERDO
+        modelOp = glm::translate(
+            refCuerpoAquaman,
+            glm::vec3(0.75f, 1.5f, 0.0f)
+        );
+
+        modelOp = glm::rotate(modelOp, glm::radians(rotBrazoIzq), glm::vec3(1.0f, 0.0f, 0.0f));
+
+        glUniformMatrix4fv(
+            glGetUniformLocation(lightingShader.Program, "model"),
+            1, GL_FALSE, glm::value_ptr(modelOp)
+        );
+
+        BrazoIzqAquaman.Draw(lightingShader);
+
+
+        // PIERNA DERECHA
+        glm::mat4 refPiernaDer = modelOp = glm::translate(
+            refCuerpoAquaman,
+            glm::vec3(-0.5f, 0.0f, -0.1f)
+        );
+
+        refPiernaDer = modelOp = glm::rotate(modelOp, glm::radians(rotPiernaDer), glm::vec3(1.0f, 0.0f, 0.0f));
+
+        glUniformMatrix4fv(
+            glGetUniformLocation(lightingShader.Program, "model"),
+            1, GL_FALSE, glm::value_ptr(modelOp)
+        );
+
+        PiernaDerAquaman.Draw(lightingShader);
+
+
+        // PIERNA IZQUIERDA
+        glm::mat4 refPiernaIzq = modelOp = glm::translate(
+            refCuerpoAquaman,
+            glm::vec3(0.5f, 0.0f, -0.1f)
+        );
+
+        refPiernaIzq = modelOp = glm::rotate(modelOp, glm::radians(rotPiernaIzq), glm::vec3(1.0f, 0.0f, 0.0f));
+
+        glUniformMatrix4fv(
+            glGetUniformLocation(lightingShader.Program, "model"),
+            1, GL_FALSE, glm::value_ptr(modelOp)
+        );
+
+        PiernaIzqAquaman.Draw(lightingShader);
+
+
+        // BOTA DERECHA
+        /*modelOp = glm::translate(
+            refCuerpoAquaman,
+            glm::vec3(-0.5f, -0.9f, 0.0f)
+        );*/
+
+        modelOp = glm::translate(
+            refPiernaDer, 
+            glm::vec3(0.0f, -0.9f, 0.0f)
+        );
+
+        glUniformMatrix4fv(
+            glGetUniformLocation(lightingShader.Program, "model"),
+            1, GL_FALSE, glm::value_ptr(modelOp)
+        );
+
+        BotaDerAquaman.Draw(lightingShader);
+
+
+        // BOTA IZQUIERDA
+        /*modelOp = glm::translate(
+            refCuerpoAquaman,
+            glm::vec3(0.5f, -0.9f, 0.0f)
+        );*/
+
+        modelOp = glm::translate(
+            refPiernaIzq, 
+            glm::vec3(0.0f, -0.9f, 0.0f)
+        );
+
+        glUniformMatrix4fv(
+            glGetUniformLocation(lightingShader.Program, "model"),
+            1, GL_FALSE, glm::value_ptr(modelOp)
+        );
+
+        BotaIzqAquaman.Draw(lightingShader);
+
+        //Trajinera
+        glm::mat4 modelTrajinera = glm::translate(
+            glm::mat4(1.0f),
+            glm::vec3(-35.0f, 0.0f, -20.0f)
+        );
+
+        modelTrajinera = glm::rotate(
+            modelTrajinera,
+            glm::radians(20.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f)
+        );
+
+        modelTrajinera = glm::scale(
+            modelTrajinera,
+            glm::vec3(0.18f)
+        );
+        glUniformMatrix4fv(glGetUniformLocation(lightingShader.Program, "model"), 1, GL_FALSE, glm::value_ptr(modelTrajinera));
+        Traja.Draw(lightingShader);
+
+
         glfwSwapBuffers(window);
+
     }
+
 
     glfwTerminate();
     return 0;
@@ -245,7 +560,7 @@ void Animation()
     float radiusZ = 30.0f; // Radio de la órbita en el eje Z (profundidad)
     float maxHeight = 35.0f; // Altura máxima en Y (Cénit del mediodía)
 
-    float speed = 0.3f;    // Velocidad del ciclo día/noche
+    float speed = 0.01f;    // Velocidad del ciclo día/noche
     float angle = (float)glfwGetTime() * speed;
 
     // El movimiento orbital traslada el objeto en X y Z mientras asciende/desciende en Y
@@ -270,11 +585,86 @@ void Animation()
 
     // Interpolación suave del color según el progreso diurno del Sol
     skyColor = glm::mix(colorNoche, colorDia, factorDia);
+
+
+    if (perspect == true)
+    {
+        float angle = glm::radians(giroMonito);
+
+        glm::vec3 camPos(
+            posX - sin(angle) * cameraDistance,
+            posY + cameraHeight,
+            posZ - cos(angle) * cameraDistance
+        );
+
+        // Actualizar posición de la cámara
+        camera.SetPosition(camPos);
+
+        // Punto al que debe mirar la cámara
+        glm::vec3 target(
+            posX,
+            posY + cameraPitch*0.1f,
+            posZ
+        );
+
+        // Actualizar dirección de la cámara
+        camera.SetFront(target - camPos);
+
+        // ANIMACIÓN DE CAMINAR
+
+        // Actualizar ángulo
+        anguloCaminata += direccionCaminata * velocidadCaminata * deltaTime;
+
+        // Limitar el movimiento entre -60 y 60
+        if (anguloCaminata >= 60.0f) {
+            anguloCaminata = 60.0f;
+            direccionCaminata = -1.0f;
+        }
+        else if (anguloCaminata <= -60.0f) {
+            anguloCaminata = -60.0f;
+            direccionCaminata = 1.0f;
+        }
+
+        // Alternar brazos
+        rotBrazoDer = anguloCaminata;
+        rotBrazoIzq = -anguloCaminata;
+
+        // Alternar piernas
+        rotPiernaDer = -anguloCaminata;
+        rotPiernaIzq = anguloCaminata;
+
+        perspect = false;
+    }
+    else {
+        float angle = glm::radians(giroMonito);
+
+        glm::vec3 camPos(
+            posX - sin(angle) * cameraDistance,
+            posY + cameraHeight,
+            posZ - cos(angle) * cameraDistance
+        );
+
+        // Actualizar posición de la cámara
+        camera.SetPosition(camPos);
+
+        // Punto al que debe mirar la cámara
+        glm::vec3 target(
+            posX,
+            posY + cameraPitch*0.1f,
+            posZ
+        );
+
+        // Actualizar dirección de la cámara
+        camera.SetFront(target - camPos);
+
+    }
+
+
 }
 
-void DoMovement()
+void DoMovement(GLFWwindow* window)
 {
-    if (keys[GLFW_KEY_W] || keys[GLFW_KEY_UP]) camera.ProcessKeyboard(FORWARD, deltaTime);
+    /*if (keys[GLFW_KEY_W] || keys[GLFW_KEY_UP]) camera.ProcessKeyboard(FORWARD, deltaTime);
     if (keys[GLFW_KEY_S] || keys[GLFW_KEY_DOWN]) camera.ProcessKeyboard(BACKWARD, deltaTime);
     if (keys[GLFW_KEY_A] || keys[GLFW_KEY_LEFT]) camera.ProcessKeyboard(LEFT, deltaTime);
     if (keys[GLFW_KEY_D] || keys[GLFW_KEY_RIGHT]) camera.ProcessKeyboard(RIGHT, deltaTime);
@@ -282,7 +672,57 @@ void DoMovement()
     if (keys[GLFW_KEY_I]) lightPos1.y += 0.05f;
     if (keys[GLFW_KEY_K]) lightPos1.y -= 0.05f;
     if (keys[GLFW_KEY_J]) lightPos1.x -= 0.05f;
-    if (keys[GLFW_KEY_L]) lightPos1.x += 0.05f;
+    if (keys[GLFW_KEY_L]) lightPos1.x += 0.05f;*/
+
+    float velocidad = 8.0f * deltaTime;
+
+    // Dirección hacia donde está orientado Aquaman
+    float angulo = glm::radians(giroMonito);
+
+    glm::vec3 direccion(
+        sin(angulo),
+        0.0f,
+        cos(angulo)
+    );
+
+    // Movimiento hacia adelante
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    {
+        posX += direccion.x * velocidad;
+        posZ += direccion.z * velocidad;
+        perspect = true;
+    }
+
+    // Movimiento hacia atrás
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    {
+        posX -= direccion.x * velocidad;
+        posZ -= direccion.z * velocidad;
+        perspect = true;
+    }
+
+    // Movimiento hacia la derecha
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        posX -= direccion.z * velocidad;
+        posZ += direccion.x * velocidad;
+        perspect = true;
+    }
+
+    // Movimiento hacia la izquierda
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        posX += direccion.z * velocidad;
+        posZ -= direccion.x * velocidad;
+        perspect = true;
+    }
+
+    // Rotación del personaje
+    if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS)
+        giroMonito -= 1.0f;
+
+    if (glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS)
+        giroMonito += 1.0f;
 }
 
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode)
@@ -303,6 +743,11 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
             keys[key] = false;
         }
     }
+
+
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
 }
 
 void MouseCallback(GLFWwindow* window, double xPos, double yPos)
@@ -320,5 +765,20 @@ void MouseCallback(GLFWwindow* window, double xPos, double yPos)
     lastX = (GLfloat)xPos;
     lastY = (GLfloat)yPos;
 
-    camera.ProcessMouseMovement(xOffset, yOffset);
+    //camera.ProcessMouseMovement(xOffset, yOffset);
+    //camera.ProcessMouseMovement(xoffset, yoffset);
+
+    //giroMonito += (float)xoffset * 0.1;
+    giroMonito -= (float)xOffset * mouseSensitivity;
+
+    // El movimiento vertical inclina solamente la cámara
+    cameraPitch += yOffset * mouseSensitivity * 3;
+
+    // Limitar la inclinación para evitar que la cámara dé vueltas
+    cameraPitch = glm::clamp(cameraPitch, -5.0f, 55.0f);
+}
+
+// glfw: whenever the mouse scroll wheel scrolls, this callback is called
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    camera.ProcessMouseScroll(yoffset);
 }

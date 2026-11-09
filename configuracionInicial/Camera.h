@@ -120,14 +120,25 @@ public:
 		return this->zoom;
 	}
 
-	glm::vec3 GetPosition()
+	glm::vec3& GetPosition()
 	{
 		return this->position;
 	}
 
-	glm::vec3 GetFront()
+	glm::vec3& GetFront()
 	{
 		return this->front;
+	}
+	
+	// NUEVOS MÉTODOS
+	void SetPosition(glm::vec3 newPosition)
+	{
+		this->position = newPosition;
+	}
+
+	void SetFront(glm::vec3 newFront)
+	{
+		this->front = glm::normalize(newFront);
 	}
 
 private:
