@@ -402,6 +402,6 @@ FodyWeavers.xsd
 
 
 # Carpetas personales que no quiero subir a GitHub
-/configuracionInicial/Models
-/configuracionInicial/ModelosCarlos
-/configuracionInicial/ModelosKaryme
+#/configuracionInicial/Models
+#/configuracionInicial/ModelosCarlos
+#/configuracionInicial/ModelosKaryme

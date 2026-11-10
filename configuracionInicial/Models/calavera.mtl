@@ -1,0 +1,14 @@
+# Blender 4.2.3 LTS MTL File: 'Calavera Final.blend'
+# www.blender.org
+
+newmtl Calavera_1
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd Calavera_1_BaseColor.jpg
+map_Ns Calavera_1_Roughness.jpg
+map_refl Calavera_1_Metallic.jpg
+map_Bump -bm 1.000000 Calavera_1_Normal.jpg

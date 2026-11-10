@@ -1,0 +1,35 @@
+# Blender 4.2.3 LTS MTL File: 'objetosPractica9.blend'
+# www.blender.org
+
+newmtl papel1_amarillo
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd papel1_amarillo.png
+map_d papel1_amarillo.png
+map_Bump -bm 1.500000 papel1_normal.png
+
+newmtl papel2_rosa
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd papel2_rosa.png
+map_d papel2_rosa.png
+map_Bump -bm 1.500000 papel2_normal.png
+
+newmtl papel3_naranja
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd papel3_naranja.png
+map_d papel3_naranja.png
+map_Bump -bm 1.500000 papel3_normal.png
