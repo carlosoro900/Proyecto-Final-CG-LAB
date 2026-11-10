@@ -399,3 +399,9 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+
+# Carpetas personales que no quiero subir a GitHub
+/configuracionInicial/Models
+/configuracionInicial/ModelosCarlos
+/configuracionInicial/ModelosKaryme
